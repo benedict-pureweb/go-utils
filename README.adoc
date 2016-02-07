@@ -1,0 +1,4 @@
+= go-utils
+David Gamba, https://github.com/DavidGamba
+
+Generic utilities for Golang that don't deserve a repo of their own.
