@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 // CopyFile copies the contents of the file named src to the file named
@@ -43,4 +44,49 @@ func CopyFile(src, dst string) error {
 	}
 	err = out.Sync()
 	return err
+}
+
+// ChannelString is a struct containing the string `Data` and error `Error`.
+type ChannelString struct {
+	Data  string
+	Error error
+}
+
+// GetFileList returns a channel with each file (`channel.string`) or an error indicating failure (`channel.error`).
+func GetFileList(filename string, ignoreDirs bool) <-chan ChannelString {
+	c := make(chan ChannelString)
+	go func() {
+		fInfo, err := os.Stat(filename)
+		if err != nil {
+			c <- ChannelString{"", err}
+			return
+		}
+		if fInfo.IsDir() {
+			if ignoreDirs == false {
+				c <- ChannelString{filename, nil}
+			}
+			fileSearch := filename + string(filepath.Separator) + "*"
+			fileMatches, err := filepath.Glob(fileSearch)
+			if err != nil {
+				c <- ChannelString{"", err}
+				return
+			}
+			for _, file := range fileMatches {
+				if filepath.Base(filename) == filepath.Base(file) {
+					continue
+				}
+				d := GetFileList(file, ignoreDirs)
+				for dirFile := range d {
+					if dirFile.Error != nil {
+						return
+					}
+					c <- ChannelString{dirFile.Data, nil}
+				}
+			}
+		} else {
+			c <- ChannelString{filename, nil}
+		}
+		close(c)
+	}()
+	return c
 }
