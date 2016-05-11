@@ -1,6 +1,7 @@
 package fileutils
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -95,5 +96,14 @@ func TestGetDirList(t *testing.T) {
 		if !reflect.DeepEqual(tree, c.result) {
 			t.Errorf("tree %q != %q", c.result, tree)
 		}
+	}
+}
+
+func TestReadLines(t *testing.T) {
+	for c := range ReadLines("test_tree/A/b/C/d/E", 1024) {
+		if c.Error != nil {
+			t.Fatalf("Unexpected error: %s\n", c.Error)
+		}
+		fmt.Println(c.String)
 	}
 }
