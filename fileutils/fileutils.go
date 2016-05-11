@@ -46,29 +46,29 @@ func CopyFile(src, dst string) error {
 	return err
 }
 
-// ChannelString is a struct containing the string `Data` and error `Error`.
-type ChannelString struct {
-	Data  string
-	Error error
+// StringError is a struct containing the string `String` and error `Error`.
+type StringError struct {
+	String string
+	Error  error
 }
 
-// GetFileList returns a channel with each file (`channel.string`) or an error indicating failure (`channel.error`).
-func GetFileList(filename string, ignoreDirs bool) <-chan ChannelString {
-	c := make(chan ChannelString)
+// GetFileList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
+func GetFileList(filename string, ignoreDirs bool) <-chan StringError {
+	c := make(chan StringError)
 	go func() {
 		fInfo, err := os.Stat(filename)
 		if err != nil {
-			c <- ChannelString{"", err}
+			c <- StringError{"", err}
 			return
 		}
 		if fInfo.IsDir() {
 			if ignoreDirs == false {
-				c <- ChannelString{filename, nil}
+				c <- StringError{filename, nil}
 			}
 			fileSearch := filename + string(filepath.Separator) + "*"
 			fileMatches, err := filepath.Glob(fileSearch)
 			if err != nil {
-				c <- ChannelString{"", err}
+				c <- StringError{"", err}
 				return
 			}
 			for _, file := range fileMatches {
@@ -80,11 +80,46 @@ func GetFileList(filename string, ignoreDirs bool) <-chan ChannelString {
 					if dirFile.Error != nil {
 						return
 					}
-					c <- ChannelString{dirFile.Data, nil}
+					c <- StringError{dirFile.String, nil}
 				}
 			}
 		} else {
-			c <- ChannelString{filename, nil}
+			c <- StringError{filename, nil}
+		}
+		close(c)
+	}()
+	return c
+}
+
+// GetDirList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
+func GetDirList(dir string) <-chan StringError {
+	c := make(chan StringError)
+	go func() {
+		fInfo, err := os.Stat(dir)
+		if err != nil {
+			c <- StringError{"", err}
+			return
+		}
+		if fInfo.IsDir() {
+			c <- StringError{dir, nil}
+			fileSearch := dir + string(filepath.Separator) + "*"
+			fileMatches, err := filepath.Glob(fileSearch)
+			if err != nil {
+				c <- StringError{"", err}
+				return
+			}
+			for _, file := range fileMatches {
+				if filepath.Base(dir) == filepath.Base(file) {
+					continue
+				}
+				d := GetDirList(file)
+				for dirFile := range d {
+					if dirFile.Error != nil {
+						return
+					}
+					c <- StringError{dirFile.String, nil}
+				}
+			}
 		}
 		close(c)
 	}()
