@@ -226,11 +226,49 @@ func GetDirList(dirname string) <-chan StringError {
 					d := GetDirList(file)
 					for dirFile := range d {
 						c <- dirFile
-						// if dirFile.Error != nil {
-						// 	c <- StringError{"", dirFile.Error}
-						// 	continue
-						// }
-						// c <- StringError{dirFile.String, nil}
+					}
+				}
+			}
+		} else {
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			close(c)
+			return
+		}
+		close(c)
+	}()
+	return c
+}
+
+// GetNumSortDirList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
+func GetNumSortDirList(dirname string, reverse bool) <-chan StringError {
+	c := make(chan StringError)
+	go func() {
+		fInfo, err := os.Stat(dirname)
+		if err != nil {
+			c <- StringError{"", err}
+			close(c)
+			return
+		}
+		if fInfo.IsDir() {
+			fileSearch := dirname + string(filepath.Separator) + "*"
+			fileMatches, err := filepath.Glob(fileSearch)
+			if err != nil {
+				c <- StringError{"", err}
+				close(c)
+				return
+			}
+			fileMatches = SortSameDirFilesNumerically(fileMatches, reverse)
+			for _, file := range fileMatches {
+				fInfo, err := os.Stat(file)
+				if err != nil {
+					c <- StringError{"", err}
+					continue
+				}
+				if fInfo.IsDir() {
+					c <- StringError{file, nil}
+					d := GetNumSortDirList(file, reverse)
+					for dirFile := range d {
+						c <- dirFile
 					}
 				}
 			}

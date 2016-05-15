@@ -272,6 +272,43 @@ func TestGetDirList(t *testing.T) {
 	}
 }
 
+func TestGetNumSortDirList(t *testing.T) {
+	cases := []struct {
+		dir     string
+		reverse bool
+		result  []string
+	}{
+		{"./test_tree2", false, []string{
+			"test_tree2/1",
+			"test_tree2/2",
+			"test_tree2/3",
+			"test_tree2/10",
+			"test_tree2/20",
+			"test_tree2/30",
+		},
+		},
+		{"./test_tree2", true, []string{
+			"test_tree2/30",
+			"test_tree2/20",
+			"test_tree2/10",
+			"test_tree2/3",
+			"test_tree2/2",
+			"test_tree2/1",
+		},
+		},
+	}
+	for _, c := range cases {
+		ch := GetNumSortDirList(c.dir, c.reverse)
+		tree := []string{}
+		for e := range ch {
+			tree = append(tree, e.String)
+		}
+		if !reflect.DeepEqual(tree, c.result) {
+			t.Errorf("tree %q != %q", c.result, tree)
+		}
+	}
+}
+
 func TestStringReplace(t *testing.T) {
 	n, err := StringReplace("test_tree/A/b/C/d/E", "lorem", "hello", -1, 1024)
 	if err != nil {
