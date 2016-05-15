@@ -23,7 +23,6 @@ import (
 // destination file exists, all it's contents will be replaced by the contents
 // of the source file.
 func CopyFile(src, dst string) error {
-	fmt.Printf("Copy: %s %s\n", src, dst)
 	in, err := os.Open(src)
 	if err != nil {
 		return err
@@ -59,6 +58,7 @@ func GetFileList(filename string, ignoreDirs bool) <-chan StringError {
 		fInfo, err := os.Stat(filename)
 		if err != nil {
 			c <- StringError{"", err}
+			close(c)
 			return
 		}
 		if fInfo.IsDir() {
@@ -69,6 +69,7 @@ func GetFileList(filename string, ignoreDirs bool) <-chan StringError {
 			fileMatches, err := filepath.Glob(fileSearch)
 			if err != nil {
 				c <- StringError{"", err}
+				close(c)
 				return
 			}
 			for _, file := range fileMatches {
@@ -78,6 +79,7 @@ func GetFileList(filename string, ignoreDirs bool) <-chan StringError {
 				d := GetFileList(file, ignoreDirs)
 				for dirFile := range d {
 					if dirFile.Error != nil {
+						close(c)
 						return
 					}
 					c <- StringError{dirFile.String, nil}
