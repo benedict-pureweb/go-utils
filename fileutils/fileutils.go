@@ -18,8 +18,59 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
+
+// StringError is a struct containing the string `String` and error `Error`.
+type StringError struct {
+	String string
+	Error  error
+}
+
+// Internal struct used to hold the basedname of a file.
+// Used for sorting purposes.
+type fileParts struct {
+	full string
+	base string
+}
+
+type byBase []fileParts
+
+func (a byBase) Len() int      { return len(a) }
+func (a byBase) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a byBase) Less(i, j int) bool {
+	nai, err := strconv.Atoi(a[i].base)
+	if err != nil {
+		return a[i].base < a[j].base
+	}
+	naj, err := strconv.Atoi(a[j].base)
+	if err != nil {
+		return a[i].base < a[j].base
+	}
+	return nai < naj
+}
+
+// SortSameDirFilesNumerically - sorts a list of files in the same dir (they all have the same dirname) numerically.
+// The files are only sorted numerically when all element basenames are numbers.
+func SortSameDirFilesNumerically(fileList []string, reverse bool) []string {
+	var files []fileParts
+	for _, e := range fileList {
+		fp := fileParts{e, filepath.Base(e)}
+		files = append(files, fp)
+	}
+	if reverse {
+		sort.Sort(sort.Reverse(byBase(files)))
+	} else {
+		sort.Sort(byBase(files))
+	}
+	var sortedFileList []string
+	for _, e := range files {
+		sortedFileList = append(sortedFileList, e.full)
+	}
+	return sortedFileList
+}
 
 // CopyFile copies the contents of the file named src to the file named
 // by dst. The file will be created if it does not already exist. If the
@@ -46,12 +97,6 @@ func CopyFile(src, dst string) error {
 	}
 	err = out.Sync()
 	return err
-}
-
-// StringError is a struct containing the string `String` and error `Error`.
-type StringError struct {
-	String string
-	Error  error
 }
 
 // GetFileList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
@@ -84,6 +129,56 @@ func GetFileList(dirname string, ignoreDirs, recursive bool) <-chan StringError 
 					}
 					if recursive {
 						d := GetFileList(file, ignoreDirs, recursive)
+						for dirFile := range d {
+							c <- dirFile
+						}
+					}
+				} else {
+					c <- StringError{file, nil}
+				}
+			}
+		} else {
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			close(c)
+			return
+		}
+		close(c)
+	}()
+	return c
+}
+
+// GetNumSortFileList - Get Numerically Sorted File List.
+// Returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
+func GetNumSortFileList(dirname string, ignoreDirs, recursive, reverse bool) <-chan StringError {
+	c := make(chan StringError)
+	go func() {
+		fInfo, err := os.Stat(dirname)
+		if err != nil {
+			c <- StringError{"", err}
+			close(c)
+			return
+		}
+		if fInfo.IsDir() {
+			fileSearch := dirname + string(filepath.Separator) + "*"
+			fileMatches, err := filepath.Glob(fileSearch)
+			if err != nil {
+				c <- StringError{"", err}
+				close(c)
+				return
+			}
+			fileMatches = SortSameDirFilesNumerically(fileMatches, reverse)
+			for _, file := range fileMatches {
+				fInfo, err := os.Stat(file)
+				if err != nil {
+					c <- StringError{"", err}
+					continue
+				}
+				if fInfo.IsDir() {
+					if ignoreDirs == false {
+						c <- StringError{file, nil}
+					}
+					if recursive {
+						d := GetNumSortFileList(file, ignoreDirs, recursive, reverse)
 						for dirFile := range d {
 							c <- dirFile
 						}

@@ -133,6 +133,107 @@ func BenchmarkGetFileList(b *testing.B) {
 	}
 }
 
+func TestGetNumSortFileList(t *testing.T) {
+	cases := []struct {
+		dir       string
+		ignoreDir bool
+		recursive bool
+		reverse   bool
+		result    []string
+	}{
+		{"./test_tree2", false, true, false, []string{
+			"test_tree2/1",
+			"test_tree2/2",
+			"test_tree2/3",
+			"test_tree2/10",
+			"test_tree2/20",
+			"test_tree2/30",
+		},
+		},
+		{"./test_tree2", false, true, true, []string{
+			"test_tree2/30",
+			"test_tree2/20",
+			"test_tree2/10",
+			"test_tree2/3",
+			"test_tree2/2",
+			"test_tree2/1",
+		},
+		},
+	}
+	for _, c := range cases {
+		ch := GetNumSortFileList(c.dir, c.ignoreDir, c.recursive, c.reverse)
+		tree := []string{}
+		for e := range ch {
+			tree = append(tree, e.String)
+		}
+		if !reflect.DeepEqual(tree, c.result) {
+			t.Errorf("tree %q != %q", c.result, tree)
+		}
+	}
+}
+
+func BenchmarkGetNumSortFileList(b *testing.B) {
+	cases := []struct {
+		file      string
+		ignoreDir bool
+		recursive bool
+		result    []string
+	}{
+		{"./test_tree", false, true, []string{
+			"test_tree/.A",
+			"test_tree/.A/b",
+			"test_tree/.A/b/C",
+			"test_tree/.A/b/C/d",
+			"test_tree/.A/b/C/d/E",
+			"test_tree/.a",
+			"test_tree/.a/B",
+			"test_tree/.a/B/c",
+			"test_tree/.a/B/c/D",
+			"test_tree/.a/B/c/D/e",
+			"test_tree/.svn",
+			"test_tree/.svn/E",
+			"test_tree/.svn/e",
+			"test_tree/A",
+			"test_tree/A/b",
+			"test_tree/A/b/C",
+			"test_tree/A/b/C/d",
+			"test_tree/A/b/C/d/E",
+			"test_tree/a",
+			"test_tree/a/B",
+			"test_tree/a/B/c",
+			"test_tree/a/B/c/D",
+			"test_tree/a/B/c/D/e"},
+		},
+		{"./test_tree", true, true, []string{
+			"test_tree/.A/b/C/d/E",
+			"test_tree/.a/B/c/D/e",
+			"test_tree/.svn/E",
+			"test_tree/.svn/e",
+			"test_tree/A/b/C/d/E",
+			"test_tree/a/B/c/D/e",
+		},
+		},
+		{"./test_tree", true, false, []string{}},
+		{"./test_tree", false, false, []string{
+			"test_tree/.A",
+			"test_tree/.a",
+			"test_tree/.svn",
+			"test_tree/A",
+			"test_tree/a",
+		},
+		},
+	}
+	for n := 0; n < b.N; n++ {
+		for _, c := range cases {
+			ch := GetNumSortFileList(c.file, c.ignoreDir, c.recursive, false)
+			tree := []string{}
+			for e := range ch {
+				tree = append(tree, e.String)
+			}
+		}
+	}
+}
+
 func TestGetDirList(t *testing.T) {
 	cases := []struct {
 		dir    string
