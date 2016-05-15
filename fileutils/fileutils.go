@@ -93,6 +93,54 @@ func GetFileList(filename string, ignoreDirs bool) <-chan StringError {
 	return c
 }
 
+// GetFileListV2 - Same as GetFileList but this one allows not to recurse.
+func GetFileListV2(dirname string, ignoreDirs, recursive bool) <-chan StringError {
+	c := make(chan StringError)
+	go func() {
+		fInfo, err := os.Stat(dirname)
+		if err != nil {
+			c <- StringError{"", err}
+			close(c)
+			return
+		}
+		if fInfo.IsDir() {
+			fileSearch := dirname + string(filepath.Separator) + "*"
+			fileMatches, err := filepath.Glob(fileSearch)
+			if err != nil {
+				c <- StringError{"", err}
+				close(c)
+				return
+			}
+			for _, file := range fileMatches {
+				fInfo, err := os.Stat(file)
+				if err != nil {
+					c <- StringError{"", err}
+					continue
+				}
+				if fInfo.IsDir() {
+					if ignoreDirs == false {
+						c <- StringError{file, nil}
+					}
+					if recursive {
+						d := GetFileListV2(file, ignoreDirs, recursive)
+						for dirFile := range d {
+							c <- dirFile
+						}
+					}
+				} else {
+					c <- StringError{file, nil}
+				}
+			}
+		} else {
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			close(c)
+			return
+		}
+		close(c)
+	}()
+	return c
+}
+
 // GetDirList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
 func GetDirList(dir string) <-chan StringError {
 	c := make(chan StringError)
