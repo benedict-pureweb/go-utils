@@ -139,7 +139,6 @@ func TestGetDirList(t *testing.T) {
 		result []string
 	}{
 		{"./test_tree", []string{
-			"./test_tree",
 			"test_tree/.A",
 			"test_tree/.A/b",
 			"test_tree/.A/b/C",
@@ -169,5 +168,22 @@ func TestGetDirList(t *testing.T) {
 		if !reflect.DeepEqual(tree, c.result) {
 			t.Errorf("tree %q != %q", c.result, tree)
 		}
+	}
+}
+
+func TestStringReplace(t *testing.T) {
+	n, err := StringReplace("test_tree/A/b/C/d/E", "lorem", "hello", -1, 1024)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s\n", err)
+	}
+	if n != 2 {
+		t.Fatalf("Unexpected amount of lines changed: %d\n", n)
+	}
+	n, err = StringReplace("test_tree/A/b/C/d/E", "hello", "lorem", -1, 1024)
+	if err != nil {
+		t.Fatalf("Unexpected error: %s\n", err)
+	}
+	if n != 2 {
+		t.Fatalf("Unexpected amount of lines changed: %d\n", n)
 	}
 }

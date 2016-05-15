@@ -12,10 +12,13 @@ Package fileutils - file related utilities
 package fileutils
 
 import (
+	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // CopyFile copies the contents of the file named src to the file named
@@ -100,34 +103,114 @@ func GetFileList(dirname string, ignoreDirs, recursive bool) <-chan StringError 
 }
 
 // GetDirList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
-func GetDirList(dir string) <-chan StringError {
+func GetDirList(dirname string) <-chan StringError {
 	c := make(chan StringError)
 	go func() {
-		fInfo, err := os.Stat(dir)
+		fInfo, err := os.Stat(dirname)
 		if err != nil {
 			c <- StringError{"", err}
+			close(c)
 			return
 		}
 		if fInfo.IsDir() {
-			c <- StringError{dir, nil}
-			fileSearch := dir + string(filepath.Separator) + "*"
+			fileSearch := dirname + string(filepath.Separator) + "*"
 			fileMatches, err := filepath.Glob(fileSearch)
 			if err != nil {
 				c <- StringError{"", err}
+				close(c)
 				return
 			}
 			for _, file := range fileMatches {
-				if filepath.Base(dir) == filepath.Base(file) {
+				fInfo, err := os.Stat(file)
+				if err != nil {
+					c <- StringError{"", err}
 					continue
 				}
-				d := GetDirList(file)
-				for dirFile := range d {
-					if dirFile.Error != nil {
-						return
+				if fInfo.IsDir() {
+					c <- StringError{file, nil}
+					d := GetDirList(file)
+					for dirFile := range d {
+						c <- dirFile
+						// if dirFile.Error != nil {
+						// 	c <- StringError{"", dirFile.Error}
+						// 	continue
+						// }
+						// c <- StringError{dirFile.String, nil}
 					}
-					c <- StringError{dirFile.String, nil}
 				}
 			}
+		} else {
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			close(c)
+			return
+		}
+		close(c)
+	}()
+	return c
+}
+
+// StringReplace - Runs strings.Replace on each line of the file.
+// The file is read line by line to account for large files.
+// The changes are first written to a tmp copy is saved before overwriting the
+// original. The original is only changed if linesChanged > 0.
+func StringReplace(file, old, new string, n, bufferSize int) (int, error) {
+	var tmpFile *os.File
+	linesChanged := 0
+	tmpFile, err := ioutil.TempFile("", filepath.Base(file)+"-")
+	if err != nil {
+		return 0, fmt.Errorf("cannot open '%s': %s\n", tmpFile.Name(), err)
+	}
+	defer tmpFile.Close()
+	for d := range ReadLines(file, bufferSize) {
+		if d.Error != nil {
+			return 0, fmt.Errorf("Error reading file '%s': %s\n", file, d.Error)
+		}
+		line := strings.Replace(d.String, old, new, n)
+		if d.String != line {
+			linesChanged++
+		}
+		tmpFile.WriteString(line + "\n")
+	}
+	tmpFile.Close()
+	if linesChanged > 0 {
+		err = CopyFile(tmpFile.Name(), file)
+		if err != nil {
+			return 0, fmt.Errorf("Couldn't update file: %s. '%s'\n", file, err)
+		}
+	}
+	return linesChanged, nil
+}
+
+// ReadLines - returns a channel of type StringError with each line of a file.
+func ReadLines(filename string, bufferSize int) <-chan StringError {
+	c := make(chan StringError)
+	go func() {
+		file, err := os.Open(filename)
+		if err != nil {
+			c <- StringError{"", fmt.Errorf("Couldn't open file '%s': %s\n", filename, err)}
+			close(c)
+			return
+		}
+		defer file.Close()
+
+		reader := bufio.NewReaderSize(file, bufferSize)
+		// line number
+		n := 0
+		for {
+			n++
+			line, isPrefix, err := reader.ReadLine()
+			if isPrefix {
+				c <- StringError{"", fmt.Errorf("%s: buffer size too small\n", filename)}
+				break
+			}
+			// stop reading file
+			if err != nil {
+				if err != io.EOF {
+					c <- StringError{"", fmt.Errorf("Read error '%s': %s\n", filename, err)}
+				}
+				break
+			}
+			c <- StringError{string(line), nil}
 		}
 		close(c)
 	}()
