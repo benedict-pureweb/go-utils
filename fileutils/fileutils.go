@@ -52,49 +52,7 @@ type StringError struct {
 }
 
 // GetFileList returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
-func GetFileList(filename string, ignoreDirs bool) <-chan StringError {
-	c := make(chan StringError)
-	go func() {
-		fInfo, err := os.Stat(filename)
-		if err != nil {
-			c <- StringError{"", err}
-			close(c)
-			return
-		}
-		if fInfo.IsDir() {
-			if ignoreDirs == false {
-				c <- StringError{filename, nil}
-			}
-			fileSearch := filename + string(filepath.Separator) + "*"
-			fileMatches, err := filepath.Glob(fileSearch)
-			if err != nil {
-				c <- StringError{"", err}
-				close(c)
-				return
-			}
-			for _, file := range fileMatches {
-				if filepath.Base(filename) == filepath.Base(file) {
-					continue
-				}
-				d := GetFileList(file, ignoreDirs)
-				for dirFile := range d {
-					if dirFile.Error != nil {
-						close(c)
-						return
-					}
-					c <- StringError{dirFile.String, nil}
-				}
-			}
-		} else {
-			c <- StringError{filename, nil}
-		}
-		close(c)
-	}()
-	return c
-}
-
-// GetFileListV2 - Same as GetFileList but this one allows not to recurse.
-func GetFileListV2(dirname string, ignoreDirs, recursive bool) <-chan StringError {
+func GetFileList(dirname string, ignoreDirs, recursive bool) <-chan StringError {
 	c := make(chan StringError)
 	go func() {
 		fInfo, err := os.Stat(dirname)
@@ -122,7 +80,7 @@ func GetFileListV2(dirname string, ignoreDirs, recursive bool) <-chan StringErro
 						c <- StringError{file, nil}
 					}
 					if recursive {
-						d := GetFileListV2(file, ignoreDirs, recursive)
+						d := GetFileList(file, ignoreDirs, recursive)
 						for dirFile := range d {
 							c <- dirFile
 						}
