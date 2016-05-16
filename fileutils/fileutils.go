@@ -186,6 +186,46 @@ func ListFiles(dirname string, ignoreDirs, recursive bool) ([]string, error) {
 	return files, nil
 }
 
+// ListFilesNumSort returns []string with a numerically sorted list of files.
+func ListFilesNumSort(dirname string, ignoreDirs, recursive, reverse bool) ([]string, error) {
+	files := []string{}
+	fInfo, err := os.Stat(dirname)
+	if err != nil {
+		return nil, err
+	}
+	if fInfo.IsDir() {
+		fileSearch := dirname + string(filepath.Separator) + "*"
+		fileMatches, err := filepath.Glob(fileSearch)
+		if err != nil {
+			return nil, err
+		}
+		fileMatches = SortSameDirFilesNumerically(fileMatches, reverse)
+		for _, file := range fileMatches {
+			fInfo, err := os.Stat(file)
+			if err != nil {
+				return nil, err
+			}
+			if fInfo.IsDir() {
+				if ignoreDirs == false {
+					files = append(files, file)
+				}
+				if recursive {
+					fl, err := ListFiles(file, ignoreDirs, recursive)
+					if err != nil {
+						return files, err
+					}
+					files = append(files, fl...)
+				}
+			} else {
+				files = append(files, file)
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("Provided dir is not a dir: '%s'", dirname)
+	}
+	return files, nil
+}
+
 // GetNumSortFileList - Get Numerically Sorted File List.
 // Returns a channel with each file (`channel.String`) or an error indicating failure (`channel.Error`).
 func GetNumSortFileList(dirname string, ignoreDirs, recursive, reverse bool) <-chan StringError {
