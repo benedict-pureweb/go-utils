@@ -36,6 +36,23 @@ type fileParts struct {
 	base string
 }
 
+// byName implements sort.Interface.
+type byName []os.FileInfo
+
+func (f byName) Len() int      { return len(f) }
+func (f byName) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
+func (f byName) Less(i, j int) bool {
+	nai, err := strconv.Atoi(f[i].Name())
+	if err != nil {
+		return f[i].Name() < f[j].Name()
+	}
+	naj, err := strconv.Atoi(f[j].Name())
+	if err != nil {
+		return f[i].Name() < f[j].Name()
+	}
+	return nai < naj
+}
+
 type byBase []fileParts
 
 func (a byBase) Len() int      { return len(a) }
@@ -182,6 +199,34 @@ func ListFiles(dirname string, ignoreDirs, recursive bool) ([]string, error) {
 	return files, nil
 }
 
+// ReadDirNumSort - Same as ioutil/ReadDir but uses returns a Numerically
+// Sorted file list.
+//
+// Taken from https://golang.org/src/io/ioutil/ioutil.go
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
+// Modified Sort method to use Numerically sorted names instead.
+// It also allows reverse sorting.
+func ReadDirNumSort(dirname string, reverse bool) ([]os.FileInfo, error) {
+	f, err := os.Open(dirname)
+	if err != nil {
+		return nil, err
+	}
+	list, err := f.Readdir(-1)
+	f.Close()
+	if err != nil {
+		return nil, err
+	}
+	if reverse {
+		sort.Sort(sort.Reverse(byName(list)))
+	} else {
+		sort.Sort(byName(list))
+	}
+	return list, nil
+}
+
 // ListFilesNumSort returns []string with a numerically sorted list of files.
 func ListFilesNumSort(dirname string, ignoreDirs, recursive, reverse bool) ([]string, error) {
 	files := []string{}
@@ -190,30 +235,25 @@ func ListFilesNumSort(dirname string, ignoreDirs, recursive, reverse bool) ([]st
 		return nil, err
 	}
 	if fInfo.IsDir() {
-		fileSearch := dirname + string(filepath.Separator) + "*"
-		fileMatches, err := filepath.Glob(fileSearch)
+		fileSearch := dirname
+		fileMatches, err := ReadDirNumSort(fileSearch, reverse)
 		if err != nil {
 			return nil, err
 		}
-		fileMatches = SortSameDirFilesNumerically(fileMatches, reverse)
 		for _, file := range fileMatches {
-			fInfo, err := os.Stat(file)
-			if err != nil {
-				return nil, err
-			}
-			if fInfo.IsDir() {
+			if file.IsDir() {
 				if ignoreDirs == false {
-					files = append(files, file)
+					files = append(files, dirname+string(os.PathSeparator)+file.Name())
 				}
 				if recursive {
-					fl, err := ListFiles(file, ignoreDirs, recursive)
+					fl, err := ListFiles(dirname+string(os.PathSeparator)+file.Name(), ignoreDirs, recursive)
 					if err != nil {
 						return files, err
 					}
 					files = append(files, fl...)
 				}
 			} else {
-				files = append(files, file)
+				files = append(files, dirname+string(os.PathSeparator)+file.Name())
 			}
 		}
 	} else {

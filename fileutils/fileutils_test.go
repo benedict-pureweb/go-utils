@@ -367,21 +367,21 @@ func TestListFilesNumSort(t *testing.T) {
 		result    []string
 	}{
 		{"./test_tree2", false, true, false, []string{
-			"test_tree2/1",
-			"test_tree2/2",
-			"test_tree2/3",
-			"test_tree2/10",
-			"test_tree2/20",
-			"test_tree2/30",
+			"./test_tree2/1",
+			"./test_tree2/2",
+			"./test_tree2/3",
+			"./test_tree2/10",
+			"./test_tree2/20",
+			"./test_tree2/30",
 		},
 		},
 		{"./test_tree2", false, true, true, []string{
-			"test_tree2/30",
-			"test_tree2/20",
-			"test_tree2/10",
-			"test_tree2/3",
-			"test_tree2/2",
-			"test_tree2/1",
+			"./test_tree2/30",
+			"./test_tree2/20",
+			"./test_tree2/10",
+			"./test_tree2/3",
+			"./test_tree2/2",
+			"./test_tree2/1",
 		},
 		},
 	}
