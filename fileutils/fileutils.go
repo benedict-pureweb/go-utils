@@ -155,29 +155,25 @@ func ListFiles(dirname string, ignoreDirs, recursive bool) ([]string, error) {
 		return nil, err
 	}
 	if fInfo.IsDir() {
-		fileSearch := dirname + string(filepath.Separator) + "*"
-		fileMatches, err := filepath.Glob(fileSearch)
+		fileSearch := dirname
+		fileMatches, err := ioutil.ReadDir(fileSearch)
 		if err != nil {
 			return nil, err
 		}
 		for _, file := range fileMatches {
-			fInfo, err := os.Stat(file)
-			if err != nil {
-				return nil, err
-			}
-			if fInfo.IsDir() {
+			if file.IsDir() {
 				if ignoreDirs == false {
-					files = append(files, file)
+					files = append(files, dirname+string(os.PathSeparator)+file.Name())
 				}
 				if recursive {
-					fl, err := ListFiles(file, ignoreDirs, recursive)
+					fl, err := ListFiles(dirname+string(os.PathSeparator)+file.Name(), ignoreDirs, recursive)
 					if err != nil {
 						return files, err
 					}
 					files = append(files, fl...)
 				}
 			} else {
-				files = append(files, file)
+				files = append(files, dirname+string(os.PathSeparator)+file.Name())
 			}
 		}
 	} else {
