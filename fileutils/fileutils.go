@@ -155,7 +155,7 @@ func GetFileList(dirname string, ignoreDirs, recursive bool) <-chan StringError 
 				}
 			}
 		} else {
-			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)}
 			close(c)
 			return
 		}
@@ -171,15 +171,38 @@ func ListFiles(dirname string, ignoreDirs, recursive bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if fInfo.Mode()&os.ModeSymlink != 0 {
+		rl, err := os.Readlink(dirname)
+		if err != nil {
+			return nil, err
+		}
+		fInfo, err = os.Stat(rl)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if fInfo.IsDir() {
-		fileSearch := dirname
-		fileMatches, err := ioutil.ReadDir(fileSearch)
+		fileMatches, err := ioutil.ReadDir(dirname)
 		if err != nil {
 			return nil, err
 		}
 		for _, file := range fileMatches {
-			if file.IsDir() {
-				if ignoreDirs == false {
+			var rlFile os.FileInfo
+			if file.Mode()&os.ModeSymlink != 0 {
+				rl, err := os.Readlink(dirname + string(os.PathSeparator) + file.Name())
+				if err != nil {
+					return files, err
+				}
+				if !filepath.IsAbs(rl) {
+					rl = dirname + string(os.PathSeparator) + rl
+				}
+				rlFile, err = os.Stat(rl)
+				if err != nil {
+					return nil, err
+				}
+			}
+			if (rlFile != nil && rlFile.IsDir()) || file.IsDir() {
+				if !ignoreDirs {
 					files = append(files, dirname+string(os.PathSeparator)+file.Name())
 				}
 				if recursive {
@@ -194,7 +217,7 @@ func ListFiles(dirname string, ignoreDirs, recursive bool) ([]string, error) {
 			}
 		}
 	} else {
-		return nil, fmt.Errorf("Provided dir is not a dir: '%s'", dirname)
+		return nil, fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)
 	}
 	return files, nil
 }
@@ -246,7 +269,7 @@ func ListFilesNumSort(dirname string, ignoreDirs, recursive, reverse bool) ([]st
 					files = append(files, dirname+string(os.PathSeparator)+file.Name())
 				}
 				if recursive {
-					fl, err := ListFiles(dirname+string(os.PathSeparator)+file.Name(), ignoreDirs, recursive)
+					fl, err := ListFilesNumSort(dirname+string(os.PathSeparator)+file.Name(), ignoreDirs, recursive, reverse)
 					if err != nil {
 						return files, err
 					}
@@ -257,7 +280,7 @@ func ListFilesNumSort(dirname string, ignoreDirs, recursive, reverse bool) ([]st
 			}
 		}
 	} else {
-		return nil, fmt.Errorf("Provided dir is not a dir: '%s'", dirname)
+		return nil, fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)
 	}
 	return files, nil
 }
@@ -303,7 +326,7 @@ func GetNumSortFileList(dirname string, ignoreDirs, recursive, reverse bool) <-c
 				}
 			}
 		} else {
-			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)}
 			close(c)
 			return
 		}
@@ -345,7 +368,7 @@ func GetDirList(dirname string) <-chan StringError {
 				}
 			}
 		} else {
-			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)}
 			close(c)
 			return
 		}
@@ -388,7 +411,7 @@ func GetNumSortDirList(dirname string, reverse bool) <-chan StringError {
 				}
 			}
 		} else {
-			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'", dirname)}
+			c <- StringError{"", fmt.Errorf("Provided dir is not a dir: '%s'\n", dirname)}
 			close(c)
 			return
 		}
