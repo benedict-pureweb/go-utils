@@ -449,6 +449,7 @@ func StringReplace(file, old, new string, n, bufferSize int) (int, error) {
 			return 0, fmt.Errorf("Couldn't update file: %s. '%s'\n", file, err)
 		}
 	}
+	os.Remove(tmpFile.Name())
 	return linesChanged, nil
 }
 
