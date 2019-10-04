@@ -1,0 +1,6 @@
+Package: PACKAGE
+Version: VERSION
+Architecture: amd64
+Maintainer: David Gamba <davidgamba@gmail.com>
+Priority: optional
+Description: DESCRIPTION
