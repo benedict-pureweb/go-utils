@@ -22,14 +22,14 @@ func TestGetString(t *testing.T) {
 		expected string
 		err      error
 	}{
-		{"simple", []string{}, "hello", "hello\n", nil},
-		{"simple", []string{"hello"}, "hello", "hello\n", ErrExtraElementsInPath},
-		{"simple", []string{"hello"}, "hello: world", "world\n", nil},
+		{"simple", []string{}, "hello", "hello", nil},
+		{"extra elements in path", []string{"hello"}, "hello", "hello", ErrExtraElementsInPath},
+		{"simple", []string{"hello"}, "hello: world", "world", nil},
 		{"simple", []string{"x"}, "hello: world", "hello: world\n", ErrMapKeyNotFound},
 		{"simple", []string{"hello", "1"}, `hello:
   - one
   - two
-  - three`, "two\n", nil},
+  - three`, "two", nil},
 		{"simple", []string{"hello", "3"}, `hello:
   - one
   - two
@@ -41,19 +41,19 @@ func TestGetString(t *testing.T) {
 		{"simple", []string{"hello", "1", "world"}, `hello:
   - one
   - world: hola
-  - three`, "hola\n", nil},
+  - three`, "hola", nil},
 		{"simple", []string{"hello", "1", "world"}, `hello:
   - one
   - world: true
-  - three`, "true\n", nil},
+  - three`, "true", nil},
 		{"simple", []string{"hello", "1", "world"}, `hello:
   - one
   - world: 123
-  - three`, "123\n", nil},
+  - three`, "123", nil},
 		{"simple", []string{"hello", "1", "world"}, `hello:
   - one
   - world: 123.123
-  - three`, "123.123\n", nil},
+  - three`, "123.123", nil},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -78,6 +78,15 @@ func NewFromString(str string) (*YML, error) {
 func (y *YML) GetString(keys []string) (string, error) {
 	path := strings.Join(keys, ",")
 	target, _, errPath := NavigateTree(y.Tree, keys)
+	// Check if response is a single element
+	switch o := target.(type) {
+	case string, int, uint, float32, float64, bool:
+		if errPath != nil {
+			return fmt.Sprintf("%v", o), fmt.Errorf("yaml path '%s' didn't return a valid string: %w", path, errPath)
+		}
+		return fmt.Sprintf("%v", o), nil
+	}
+	// Marshal complex response
 	out, err := yaml.Marshal(target)
 	if errPath != nil {
 		return string(out), fmt.Errorf("yaml path '%s' didn't return a valid string: %w", path, errPath)
@@ -85,6 +94,7 @@ func (y *YML) GetString(keys []string) (string, error) {
 	if err != nil {
 		return string(out), fmt.Errorf("failed to Marshal output: %w", err)
 	}
+	Logger.Printf("%s", out)
 	return string(out), nil
 }
 
