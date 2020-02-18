@@ -22,7 +22,7 @@ import (
 // BuildMetadata - Provides the metadata part of the version information.
 var BuildMetadata = "dev"
 
-const semVersion = "0.2.0"
+const semVersion = "0.3.1"
 
 var logger = log.New(ioutil.Discard, "", log.LstdFlags)
 
