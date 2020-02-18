@@ -69,7 +69,15 @@ Indexes are positive integers.`))
 	stdinIsDevice := (statStdin.Mode() & os.ModeDevice) != 0
 
 	var yml *yamlutils.YML
-	if stdinIsDevice {
+	if !stdinIsDevice && !opt.Called("file") {
+		logger.Printf("Reading from stdin\n")
+		reader := os.Stdin
+		yml, err = yamlutils.NewFromReader(reader)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: reading yaml from STDIN: %s\n", err)
+			os.Exit(1)
+		}
+	} else {
 		logger.Printf("Reading from file: %s\n", file)
 		if !opt.Called("file") {
 			fmt.Fprintf(os.Stderr, "ERROR: missing argument '--file <file>'\n")
@@ -78,14 +86,6 @@ Indexes are positive integers.`))
 		yml, err = yamlutils.NewFromFile(file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: reading yaml file: %s\n", err)
-			os.Exit(1)
-		}
-	} else {
-		logger.Printf("Reading from stdin\n")
-		reader := os.Stdin
-		yml, err = yamlutils.NewFromReader(reader)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: reading yaml from STDIN: %s\n", err)
 			os.Exit(1)
 		}
 	}
