@@ -22,7 +22,7 @@ import (
 // BuildMetadata - Provides the metadata part of the version information.
 var BuildMetadata = "dev"
 
-const semVersion = "0.3.1"
+const semVersion = "0.4.0"
 
 var logger = log.New(ioutil.Discard, "", log.LstdFlags)
 
@@ -48,7 +48,7 @@ Indexes are positive integers.`))
 	}
 	if opt.Called("version") {
 		fmt.Printf("Version: %s+%s\n", semVersion, BuildMetadata)
-		os.Exit(1)
+		os.Exit(0)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
