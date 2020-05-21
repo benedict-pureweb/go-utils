@@ -75,9 +75,9 @@ func NewFromString(str string) (*YML, error) {
 // Path is a string with elements separated by /.
 // Array indexes are given as a number.
 // For example: "level1/level2/3/level4"
-func (y *YML) GetString(keys []string) (string, error) {
+func (y *YML) GetString(include bool, keys []string) (string, error) {
 	path := strings.Join(keys, ",")
-	target, _, errPath := NavigateTree(y.Tree, keys)
+	target, _, errPath := NavigateTree(include, y.Tree, keys)
 	// Check if response is a single element
 	switch o := target.(type) {
 	case string, int, uint, float32, float64, bool:
@@ -112,10 +112,11 @@ var ErrInvalidIndex = fmt.Errorf("invalid index")
 
 // NavigateTree allows you to define a path string to traverse a tree composed of maps and arrays.
 // To navigate through slices/arrays use a numerical index, for example: [path to array 1]
-func NavigateTree(m interface{}, p []string) (interface{}, []string, error) {
+// When include is true, the returned map will have the key as part of it.
+func NavigateTree(include bool, m interface{}, p []string) (interface{}, []string, error) {
 	// Logger.Printf("type: %v, path: %v\n", reflect.TypeOf(m), p)
 	path := strings.Join(p, "/")
-	Logger.Printf("NavigateTree: Input path: %s", path)
+	Logger.Printf("NavigateTree: Self: %v, Input path: '%s'", include, path)
 	if len(p) <= 0 {
 		return m, p, nil
 	}
@@ -126,7 +127,11 @@ func NavigateTree(m interface{}, p []string) (interface{}, []string, error) {
 		if !ok {
 			return m, p, fmt.Errorf("%w: %s", ErrMapKeyNotFound, p[0])
 		}
-		return NavigateTree(t, p[1:])
+		if include && len(p) == 1 {
+			Logger.Printf("NavigateTree: self return")
+			return map[interface{}]interface{}{p[0]: m.(map[interface{}]interface{})[p[0]]}, p[1:], nil
+		}
+		return NavigateTree(include, t, p[1:])
 	case []interface{}:
 		Logger.Printf("NavigateTree: slice/array type")
 
@@ -137,9 +142,13 @@ func NavigateTree(m interface{}, p []string) (interface{}, []string, error) {
 		if index < 0 || len(m.([]interface{})) <= index {
 			return m, p, fmt.Errorf("%w: %s", ErrInvalidIndex, p[0])
 		}
-		return NavigateTree(m.([]interface{})[index], p[1:])
+		return NavigateTree(include, m.([]interface{})[index], p[1:])
 	default:
 		Logger.Printf("NavigateTree: single element type")
 		return m, p, fmt.Errorf("%w: %s", ErrExtraElementsInPath, strings.Join(p, "/"))
 	}
+}
+
+func AddChild(m, child interface{}) (interface{}, error) {
+	return nil, nil
 }

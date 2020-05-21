@@ -22,20 +22,24 @@ import (
 // BuildMetadata - Provides the metadata part of the version information.
 var BuildMetadata = "dev"
 
-const semVersion = "0.4.0"
+const semVersion = "0.5.0"
 
 var logger = log.New(ioutil.Discard, "", log.LstdFlags)
 
 func main() {
 	var file string
+	var include bool
 	var keys []string
 	opt := getoptions.New()
-	opt.Self("", `Parses YAML input passed from file or piped to STDIN and filters it by key or index.`)
+	opt.Self("", `Parses YAML input passed from file or piped to STDIN and filters it by key or index.
+
+    Source: https://github.com/DavidGamba/go-utils`)
 	opt.Bool("help", false, opt.Alias("?"))
 	opt.Bool("debug", false)
 	opt.Bool("version", false, opt.Alias("V"))
 	opt.Bool("n", false, opt.Description("Remove trailing spaces."))
 	opt.Bool("silent", false, opt.Description("Don't print full context errors."))
+	opt.BoolVar(&include, "include", false, opt.Description("Include parent key if it is a map key."))
 	opt.StringVar(&file, "file", "", opt.Alias("f"), opt.ArgName("file"), opt.Description("YAML file to read."))
 	opt.StringSliceVar(&keys, "key", 1, 99, opt.Alias("k"), opt.ArgName("key/index"),
 		opt.Description(`Key or index to descend to.
@@ -90,7 +94,7 @@ Indexes are positive integers.`))
 		}
 	}
 
-	str, err := yml.GetString(xpath)
+	str, err := yml.GetString(include, xpath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 		if !opt.Called("silent") {
