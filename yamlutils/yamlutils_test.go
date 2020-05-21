@@ -137,3 +137,80 @@ func TestNavigateTree(t *testing.T) {
 		})
 	}
 }
+
+func TestAddChild(t *testing.T) {
+	tests := []struct {
+		name        string
+		structure   interface{}
+		childString string
+		expected    interface{}
+		err         error
+	}{
+		{"simple", nil, "hello", nil, ErrInvalidParentType},
+		{"simple", "str", "hello", "str", ErrInvalidParentType},
+		{"simple", 123, "hello", 123, ErrInvalidParentType},
+		{"array", []interface{}{1, 2, 3}, "hello", []interface{}{1, 2, 3, "hello"}, nil},
+		{"array", []interface{}{1, 2, 3}, "hello: world", []interface{}{1, 2, 3, map[interface{}]interface{}{"hello": "world"}}, nil},
+		{"array", []interface{}{1, 2, 3}, "hello: world", []interface{}{1, 2, 3, map[interface{}]interface{}{"hello": "world"}}, nil},
+		{"map",
+			map[interface{}]interface{}{"map": []string{"one"}, "another": []string{"two"}},
+			"hello",
+			map[interface{}]interface{}{"map": []string{"one"}, "another": []string{"two"}}, ErrInvalidChildTypeKeyValue},
+		{"map",
+			map[interface{}]interface{}{"map": []string{"one"}, "another": []string{"two"}},
+			"hello: world",
+			map[interface{}]interface{}{"map": []string{"one"}, "another": []string{"two"}, "hello": "world"}, nil},
+		{"map",
+			map[interface{}]interface{}{"map": []string{"one"}, "another": []string{"two"}},
+			"map: world",
+			map[interface{}]interface{}{"map": "world", "another": []string{"two"}}, nil},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := ""
+			buf := bytes.NewBufferString(s)
+			Logger.SetOutput(buf)
+			err := AddChild(&test.structure, test.childString)
+			if !errors.Is(err, test.err) {
+				t.Errorf("Unexpected error: %s\n", err)
+			}
+			if !reflect.DeepEqual(test.structure, test.expected) {
+				t.Errorf("Expected:\n%#v\nGot:\n%#v\n", test.expected, test.structure)
+			}
+			t.Log(buf.String())
+		})
+	}
+}
+
+func TestAddChildToTree(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        []string
+		structure   interface{}
+		expected    interface{}
+		childString string
+		err         error
+	}{
+		{"simple", []string{}, "hola", "hola", "hello", ErrInvalidParentType},
+		{"array", []string{}, []interface{}{"hola"}, []interface{}{"hola", "hello"}, "hello", nil},
+		{"map", []string{}, map[interface{}]interface{}{"map": "hola"}, map[interface{}]interface{}{"map": "hola", "hello": "world"}, "hello: world", nil},
+		{"map", []string{"map"}, map[interface{}]interface{}{"map": []interface{}{"one", "two", "three"}},
+			map[interface{}]interface{}{"map": []interface{}{"one", "two", "three", "four"}}, "four", nil},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s := ""
+			buf := bytes.NewBufferString(s)
+			Logger.SetOutput(buf)
+			err := AddChildToTree(&test.structure, &test.structure, test.path, test.childString)
+			if !errors.Is(err, test.err) {
+				t.Errorf("Unexpected error: %s\n", err)
+			}
+			if !reflect.DeepEqual(test.structure, test.expected) {
+				t.Errorf("Expected:\n%#v\nGot:\n%#v\n", test.expected, test.structure)
+			}
+			t.Log(buf.String())
+		})
+	}
+}

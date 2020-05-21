@@ -29,6 +29,7 @@ var logger = log.New(ioutil.Discard, "", log.LstdFlags)
 func main() {
 	var file string
 	var include bool
+	var add string
 	var keys []string
 	opt := getoptions.New()
 	opt.Self("", `Parses YAML input passed from file or piped to STDIN and filters it by key or index.
@@ -41,6 +42,7 @@ func main() {
 	opt.Bool("silent", false, opt.Description("Don't print full context errors."))
 	opt.BoolVar(&include, "include", false, opt.Description("Include parent key if it is a map key."))
 	opt.StringVar(&file, "file", "", opt.Alias("f"), opt.ArgName("file"), opt.Description("YAML file to read."))
+	opt.StringVar(&add, "add", "", opt.ArgName("yaml/json input"), opt.Description("Child input to add at the current location."))
 	opt.StringSliceVar(&keys, "key", 1, 99, opt.Alias("k"), opt.ArgName("key/index"),
 		opt.Description(`Key or index to descend to.
 Multiple keys allow to descend further.
@@ -92,6 +94,22 @@ Indexes are positive integers.`))
 			fmt.Fprintf(os.Stderr, "ERROR: reading yaml file: %s\n", err)
 			os.Exit(1)
 		}
+	}
+
+	if opt.Called("add") {
+		str, err := yml.AddString(xpath, add)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			if !opt.Called("silent") {
+				fmt.Fprintf(os.Stderr, ">\t%s\n", strings.ReplaceAll(str, "\n", "\n>\t"))
+			}
+			os.Exit(1)
+		}
+		if opt.Called("n") {
+			str = strings.TrimSpace(str)
+		}
+		fmt.Printf(str)
+		return
 	}
 
 	str, err := yml.GetString(include, xpath)
