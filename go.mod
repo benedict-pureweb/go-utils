@@ -1,4 +1,4 @@
-module github.com/DavidGamba/go-utils
+module github.com/benedict-pureweb/go-utils
 
 go 1.13
 

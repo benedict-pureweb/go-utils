@@ -34,7 +34,7 @@ func main() {
 	opt := getoptions.New()
 	opt.Self("", `Parses YAML input passed from file or piped to STDIN and filters it by key or index.
 
-    Source: https://github.com/DavidGamba/go-utils`)
+    Source: https://github.com/benedict-pureweb/go-utils`)
 	opt.Bool("help", false, opt.Alias("?"))
 	opt.Bool("debug", false)
 	opt.Bool("version", false, opt.Alias("V"))
